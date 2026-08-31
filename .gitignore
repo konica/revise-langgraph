@@ -1,2 +1,5 @@
 .sandbox
 .claude/worktrees
+.env
+__pycache__/
+*.pyc
