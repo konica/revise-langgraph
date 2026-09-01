@@ -13,4 +13,5 @@ dependencies = [
 [dependency-groups]
 dev = [
     "debugpy>=1.8.21",
+    "langgraph-cli[inmem]>=0.4.31",
 ]
