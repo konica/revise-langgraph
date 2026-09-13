@@ -8,6 +8,7 @@ Hands-on scenarios for learning [LangGraph](https://docs.langchain.com/oss/pytho
 |---|---|
 | [01-quickstart](01-quickstart/) | Building a basic tool-calling agent with the Graph API and the Functional API |
 | [02-local-server](02-local-server/) | Serving the same agent over HTTP with Agent Server (`langgraph dev`) and LangGraph Studio |
+| [03-thinking-in-langgraph](03-thinking-in-langgraph/) | A customer support email agent covering state design, `Command`-based routing, all four error-handling strategies, and human-in-the-loop with a checkpointer |
 
 ## Setup
 
