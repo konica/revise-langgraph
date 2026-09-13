@@ -1,11 +1,14 @@
 # 02 · Local Server: serving an agent with Agent Server
 
-Source: [LangGraph local server](https://docs.langchain.com/oss/python/langgraph/local-server)
+Sources: [LangGraph local server](https://docs.langchain.com/oss/python/langgraph/local-server) ·
+[Agent Chat UI](https://docs.langchain.com/oss/python/langgraph/ui)
 
 This scenario takes the exact same calculator agent from
 [01-quickstart](../01-quickstart/) and serves it over HTTP with **Agent
 Server** — no changes to the agent's graph logic at all. It exists to make
 the relationship between "a LangGraph agent" and "Agent Server" concrete.
+It also adds a browser-based chat UI ([**Agent Chat UI**](agent-chat-ui/))
+on top, so a person — not just `client.py` — can talk to the agent.
 
 ## How an agent relates to Agent Server
 
@@ -57,6 +60,12 @@ a UI, a teammate, another service — without rewriting it.
 - **`client.py`** — a minimal client using the `langgraph_sdk`, showing
   that talking to the served agent is now just an HTTP call: this script
   never imports LangGraph or `agent.py` at all.
+- **`agent-chat-ui/`** — a vendored copy of
+  [Agent Chat UI](https://github.com/langchain-ai/agent-chat-ui), a Next.js
+  app that talks to Agent Server the same way `client.py` does (over HTTP,
+  by graph name), but renders a chat window instead of printing to a
+  terminal. See its own [README](agent-chat-ui/README.md) for the full
+  feature set (tool call rendering, time travel, artifacts, …).
 
 ## Setup
 
@@ -108,6 +117,32 @@ UV_PROJECT_ENVIRONMENT="$V" uv run python 02-local-server/client.py
 This streams the same "Add 3 and 4." run as 01-quickstart, but over HTTP
 via `langgraph_sdk` instead of an in-process `.invoke()` call.
 
+### Web UI (Agent Chat UI)
+
+With `langgraph dev` still running, start the chat UI in a third terminal:
+
+```bash
+cd 02-local-server/agent-chat-ui
+npm install   # first time only
+npm run dev
+```
+
+> Note: `npm install` can be very slow if this repo is checked out on a
+> filesystem that doesn't support fast/atomic renames (the same class of
+> issue noted above for `uv`'s venv). If it is, run `npm install` from a
+> copy of `02-local-server/agent-chat-ui/` on a local disk instead, then
+> run `npm run dev` from there.
+
+Open <http://localhost:3000>. The app's `.env.example` already ships with
+defaults that match this scenario's `langgraph.json`
+(`NEXT_PUBLIC_API_URL=http://localhost:2024`,
+`NEXT_PUBLIC_ASSISTANT_ID=agent`), so if you copy it to `.env` — or just
+accept the setup form's defaults the first time the page loads — it
+connects straight to the dev server with no other configuration. Type
+"Add 3 and 4." and watch the same graph run as `client.py`, now with the
+tool calls and results rendered as chat messages instead of printed
+`chunk.event` / `chunk.data` pairs.
+
 ## What to notice
 
 - `client.py` addresses the graph by the string `"agent"` — the key from
@@ -118,6 +153,12 @@ via `langgraph_sdk` instead of an in-process `.invoke()` call.
   `ToolMessage` the tool node produced) without adding any print
   statements or debugger to the agent's own code — that visibility comes
   from being served, not from anything in `agent.py`.
+- `client.py`, Studio, and Agent Chat UI are three different clients of
+  the exact same running server — none of them required a single change
+  to `agent.py`. That's the payoff of "the agent is the logic; Agent
+  Server is the delivery mechanism": any client that can speak the Agent
+  Server HTTP API (or its `langgraph_sdk` wrapper) can drive the graph,
+  including a full chat UI you didn't have to build yourself.
 - `langgraph dev` is explicitly a **development-only** server (in-memory,
   no persistence across restarts). The doc notes that shipping this to
   production means using LangSmith Deployment instead — the local server
