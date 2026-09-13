@@ -132,6 +132,13 @@ npm run dev
 > issue noted above for `uv`'s venv). If it is, run `npm install` from a
 > copy of `02-local-server/agent-chat-ui/` on a local disk instead, then
 > run `npm run dev` from there.
+>
+> On that same kind of filesystem, `npm install` can also fail outright
+> with `Error: ENOENT: no such file or directory, uv_cwd` — Node's cached
+> working-directory handle went stale, usually because a previous
+> `npm install`'s heavy renaming inside `node_modules` confused the mount.
+> `cd` out and back into the directory (or open a fresh shell) to refresh
+> the handle, then retry.
 
 Open <http://localhost:3000>. The app's `.env.example` already ships with
 defaults that match this scenario's `langgraph.json`
