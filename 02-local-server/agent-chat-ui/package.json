@@ -10,13 +10,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "NODE_OPTIONS='--require ./scripts/use-typescript6.cjs' eslint .",
-    "lint:fix": "NODE_OPTIONS='--require ./scripts/use-typescript6.cjs' eslint . --fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "dev": "node node_modules/next/dist/bin/next dev",
+    "build": "node node_modules/next/dist/bin/next build",
+    "start": "node node_modules/next/dist/bin/next start",
+    "lint": "NODE_OPTIONS='--require ./scripts/use-typescript6.cjs' node node_modules/eslint/bin/eslint.js .",
+    "lint:fix": "NODE_OPTIONS='--require ./scripts/use-typescript6.cjs' node node_modules/eslint/bin/eslint.js . --fix",
+    "format": "node node_modules/prettier/bin/prettier.cjs --write .",
+    "format:check": "node node_modules/prettier/bin/prettier.cjs --check ."
   },
   "dependencies": {
     "@langchain/core": "^1.2.9",

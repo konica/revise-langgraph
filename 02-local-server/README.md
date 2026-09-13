@@ -127,18 +127,26 @@ npm install   # first time only
 npm run dev
 ```
 
-> Note: `npm install` can be very slow if this repo is checked out on a
-> filesystem that doesn't support fast/atomic renames (the same class of
-> issue noted above for `uv`'s venv). If it is, run `npm install` from a
-> copy of `02-local-server/agent-chat-ui/` on a local disk instead, then
-> run `npm run dev` from there.
->
-> On that same kind of filesystem, `npm install` can also fail outright
-> with `Error: ENOENT: no such file or directory, uv_cwd` — Node's cached
-> working-directory handle went stale, usually because a previous
-> `npm install`'s heavy renaming inside `node_modules` confused the mount.
-> `cd` out and back into the directory (or open a fresh shell) to refresh
-> the handle, then retry.
+> **Filesystem quirks.** If this repo is checked out on a filesystem that
+> doesn't support fast/atomic renames or symlinks (the same class of issue
+> noted above for `uv`'s venv — e.g. a Windows-hosted volume bind-mounted
+> into a Linux sandbox without symlink privileges), `npm install` here can
+> hit a few things:
+> - **Very slow installs.** Run `npm install` from a copy of
+>   `02-local-server/agent-chat-ui/` on a local disk instead, then run
+>   `npm run dev` from there.
+> - **`Error: ENOENT: no such file or directory, uv_cwd`.** Node's cached
+>   working-directory handle went stale, usually from a previous
+>   `npm install`'s heavy renaming inside `node_modules`. `cd` out and
+>   back into the directory (or open a fresh shell) to refresh the
+>   handle, then retry.
+> - **`EPERM: operation not permitted, symlink ...` under
+>   `node_modules/.bin/`.** Already worked around: this app's
+>   [`.npmrc`](agent-chat-ui/.npmrc) sets `bin-links=false` so npm never
+>   attempts those symlinks, and its `package.json` scripts invoke each
+>   tool with `node node_modules/<pkg>/<bin>` directly instead of relying
+>   on them. You shouldn't see this one — if you do, some other tool
+>   outside these scripts is still expecting a `.bin` symlink to exist.
 
 Open <http://localhost:3000>. The app's `.env.example` already ships with
 defaults that match this scenario's `langgraph.json`
