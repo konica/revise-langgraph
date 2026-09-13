@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:docs.langchain.com)"
+      "WebFetch(domain:docs.langchain.com)",
+      "Bash(git -C /c/Experiments/revise-langraph log --oneline -5 -- .vscode/launch.json)",
+      "Bash(python3 -c \"import debugpy; print\\(debugpy.__version__\\)\")"
     ]
   }
 }

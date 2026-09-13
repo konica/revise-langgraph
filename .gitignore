@@ -4,3 +4,5 @@
 __pycache__/
 *.pyc
 .langgraph_api/
+screenshots
+.claude/settings.local.json

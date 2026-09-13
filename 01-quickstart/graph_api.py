@@ -43,7 +43,7 @@ def divide(a: int, b: int) -> float:
 tools = [add, multiply, divide]
 tools_by_name = {t.name: t for t in tools}
 
-model = init_chat_model("claude-sonnet-4-6", temperature=0)
+model = init_chat_model("claude-haiku-4-5", temperature=0)
 model_with_tools = model.bind_tools(tools)
 
 

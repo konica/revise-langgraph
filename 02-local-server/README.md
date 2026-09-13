@@ -83,7 +83,7 @@ in the current directory):
 ```bash
 V="$HOME/.venvs/revise-langraph"
 cd 02-local-server
-UV_PROJECT_ENVIRONMENT="$V" uv run langgraph dev
+UV_PROJECT_ENVIRONMENT="$V" uv run langgraph dev --host 0.0.0.0
 ```
 
 You should see:
