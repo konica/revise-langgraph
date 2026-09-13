@@ -8,8 +8,10 @@ Reference: https://docs.langchain.com/oss/python/langgraph/quickstart
 """
 
 import operator
+import sys
 from typing import Literal
 
+import anthropic
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 from langchain.messages import HumanMessage, SystemMessage, ToolMessage
@@ -43,7 +45,11 @@ def divide(a: int, b: int) -> float:
 tools = [add, multiply, divide]
 tools_by_name = {t.name: t for t in tools}
 
-model = init_chat_model("claude-sonnet-4-6", temperature=0)
+
+# max_retries controls how many times the underlying Anthropic SDK client
+# retries a 429/5xx with exponential backoff before giving up. The default
+# is 2, which isn't enough headroom on a rate-limited (e.g. trial-tier) key.
+model = init_chat_model("claude-sonnet-4-6", temperature=0, max_retries=6)
 model_with_tools = model.bind_tools(tools)
 
 
@@ -105,6 +111,18 @@ agent = agent_builder.compile()
 
 
 if __name__ == "__main__":
-    result = agent.invoke({"messages": [HumanMessage(content="Add 3 and 4.")]})
+    try:
+        result = agent.invoke({"messages": [HumanMessage(content="Add 3 and 4.")]})
+    except anthropic.RateLimitError as e:
+        retry_after = e.response.headers.get("retry-after")
+        print(
+            "Rate limited (429) after exhausting retries."
+            + (f" Retry after {retry_after}s." if retry_after else "")
+            + " Check your usage tier / limits at "
+            "https://console.anthropic.com/settings/limits, or wait and rerun.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     for m in result["messages"]:
         m.pretty_print()
