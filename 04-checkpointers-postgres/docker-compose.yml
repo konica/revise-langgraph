@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: checkpointers-postgres-demo
+    environment:
+      POSTGRES_USER: langgraph
+      POSTGRES_PASSWORD: langgraph
+      POSTGRES_DB: checkpoints
+    ports:
+      # Non-default host port so this doesn't collide with a Postgres you
+      # already have running locally.
+      - "5442:5432"
+    volumes:
+      - checkpointers-postgres-demo-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langgraph -d checkpoints"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  checkpointers-postgres-demo-data:
