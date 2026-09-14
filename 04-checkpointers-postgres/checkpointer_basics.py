@@ -1,4 +1,4 @@
-"""The calculator agent from 01-quickstart, now checkpointed to Postgres.
+"""The calculator agent from `calculator_agent.py`, checkpointed to Postgres.
 
 Swapping `InMemorySaver` for `PostgresSaver` is the whole difference between
 a demo and something you could actually put in production: conversation
@@ -12,92 +12,13 @@ history with `update_state` (time travel).
 Reference: https://docs.langchain.com/oss/python/langgraph/checkpointers
 """
 
-import operator
 import os
-from typing import Literal
 
-from dotenv import load_dotenv
-from langchain.chat_models import init_chat_model
-from langchain.messages import HumanMessage, SystemMessage, ToolMessage
-from langchain.tools import tool
+from langchain.messages import HumanMessage
 from langgraph.checkpoint.postgres import PostgresSaver
-from langgraph.graph import END, START, StateGraph
-from typing_extensions import Annotated, TypedDict
+from langgraph.graph import START
 
-load_dotenv()
-
-
-# --- Tools and model (same calculator agent as 01-quickstart) --------------
-
-@tool
-def multiply(a: int, b: int) -> int:
-    """Multiply `a` and `b`."""
-    return a * b
-
-
-@tool
-def add(a: int, b: int) -> int:
-    """Add `a` and `b`."""
-    return a + b
-
-
-@tool
-def divide(a: int, b: int) -> float:
-    """Divide `a` and `b`."""
-    return a / b
-
-
-tools = [add, multiply, divide]
-tools_by_name = {t.name: t for t in tools}
-
-model = init_chat_model("claude-haiku-4-5", temperature=0)
-model_with_tools = model.bind_tools(tools)
-
-
-class MessagesState(TypedDict):
-    messages: Annotated[list, operator.add]
-    llm_calls: int
-
-
-def llm_call(state: MessagesState):
-    return {
-        "messages": [
-            model_with_tools.invoke(
-                [
-                    SystemMessage(
-                        content="You are a helpful assistant tasked with "
-                        "performing arithmetic on a set of inputs."
-                    )
-                ]
-                + state["messages"]
-            )
-        ],
-        "llm_calls": state.get("llm_calls", 0) + 1,
-    }
-
-
-def tool_node(state: MessagesState):
-    result = []
-    for tool_call in state["messages"][-1].tool_calls:
-        current_tool = tools_by_name[tool_call["name"]]
-        observation = current_tool.invoke(tool_call["args"])
-        result.append(ToolMessage(content=observation, tool_call_id=tool_call["id"]))
-    return {"messages": result}
-
-
-def should_continue(state: MessagesState) -> Literal["tool_node", "__end__"]:
-    last_message = state["messages"][-1]
-    if last_message.tool_calls:
-        return "tool_node"
-    return END
-
-
-agent_builder = StateGraph(MessagesState)
-agent_builder.add_node("llm_call", llm_call)
-agent_builder.add_node("tool_node", tool_node)
-agent_builder.add_edge(START, "llm_call")
-agent_builder.add_conditional_edges("llm_call", should_continue, ["tool_node", END])
-agent_builder.add_edge("tool_node", "llm_call")
+from calculator_agent import MessagesState, agent_builder
 
 
 def last_answer(result: MessagesState) -> str:
@@ -116,7 +37,7 @@ if __name__ == "__main__":
 
         # Every checkpointed run needs a thread_id: it's the key the
         # checkpointer uses to find this conversation's saved state again.
-        config = {"configurable": {"thread_id": "demo-thread"}}
+        config = {"configurable": {"thread_id": "demo-thread-1"}}
 
         print("=== Turn 1 ===")
         result = agent.invoke(
