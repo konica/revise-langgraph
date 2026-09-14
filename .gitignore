@@ -3,6 +3,7 @@
 .env
 __pycache__/
 *.pyc
+*.egg-info/
 .langgraph_api/
 screenshots
 .claude/settings.local.json
