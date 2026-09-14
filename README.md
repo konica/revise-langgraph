@@ -9,6 +9,7 @@ Hands-on scenarios for learning [LangGraph](https://docs.langchain.com/oss/pytho
 | [01-quickstart](01-quickstart/) | Building a basic tool-calling agent with the Graph API and the Functional API |
 | [02-local-server](02-local-server/) | Serving the same agent over HTTP with Agent Server (`langgraph dev`), LangGraph Studio, and the hosted Agent Chat UI |
 | [04-checkpointers-postgres](04-checkpointers-postgres/) | Persisting the agent's state to PostgreSQL with `PostgresSaver` / `AsyncPostgresSaver`: threads, state history, time travel, and a hand-rolled FastAPI service as the non-Agent-Server deployment story |
+| [05-store-postgres](05-store-postgres/) | Cross-thread, per-user memory with `PostgresStore`: the calculator agent remembers past calculations across brand-new threads, namespaced so different users never see each other's history |
 
 ## Setup
 

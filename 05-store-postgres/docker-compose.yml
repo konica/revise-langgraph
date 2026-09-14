@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: langgraph
+      POSTGRES_PASSWORD: langgraph
+      POSTGRES_DB: store_demo
+    ports:
+      # Own port, own database -- this scenario doesn't depend on
+      # 04-checkpointers-postgres's Postgres being up.
+      - "5443:5432"
+    volumes:
+      - store-postgres-demo-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langgraph -d store_demo"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  store-postgres-demo-data:
