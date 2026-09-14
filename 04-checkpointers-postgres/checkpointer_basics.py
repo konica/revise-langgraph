@@ -6,8 +6,11 @@ state survives process restarts because it lives in the database, not in
 the Python process's memory.
 
 This script walks through the checkpointer concepts from the docs, in
-order: threads, checkpoints, `get_state`, `get_state_history`, and forking
-history with `update_state` (time travel).
+order: threads, checkpoints, `get_state`, `get_state_history`, forking
+history with `update_state` (time travel) -- and then the store: a
+brand-new thread that still recalls a calculation from an earlier one,
+because memory that's scoped to the user rather than the thread doesn't
+care that the thread is new.
 
 Reference: https://docs.langchain.com/oss/python/langgraph/checkpointers
 """
@@ -17,8 +20,9 @@ import os
 from langchain.messages import HumanMessage
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.graph import START
+from langgraph.store.postgres import PostgresStore
 
-from calculator_agent import MessagesState, agent_builder
+from calculator_agent import Context, MessagesState, agent_builder
 
 
 def last_answer(result: MessagesState) -> str:
@@ -28,20 +32,25 @@ def last_answer(result: MessagesState) -> str:
 if __name__ == "__main__":
     db_uri = os.environ["DATABASE_URL"]
 
-    # `setup()` creates the checkpoints/writes tables. It's idempotent, so
-    # it's safe to call every run, but in a real deployment you'd run it
+    # `setup()` creates each backend's own tables (checkpoints/writes for
+    # the saver, a separate store table). Both calls are idempotent, so
+    # it's safe to call every run, but in a real deployment you'd run them
     # once as a migration step rather than on every app startup.
-    with PostgresSaver.from_conn_string(db_uri) as checkpointer:
+    with PostgresSaver.from_conn_string(db_uri) as checkpointer, \
+            PostgresStore.from_conn_string(db_uri) as store:
         checkpointer.setup()
-        agent = agent_builder.compile(checkpointer=checkpointer)
+        store.setup()
+        agent = agent_builder.compile(checkpointer=checkpointer, store=store)
 
-        # Every checkpointed run needs a thread_id: it's the key the
-        # checkpointer uses to find this conversation's saved state again.
+        # `thread_id` scopes conversation history (the checkpointer);
+        # `user_id` (via `context`) scopes memories that outlive any one
+        # conversation (the store). Every invoke below uses the same user.
+        user = Context(user_id="demo-user")
         config = {"configurable": {"thread_id": "demo-thread-1"}}
 
         print("=== Turn 1 ===")
         result = agent.invoke(
-            {"messages": [HumanMessage("What's 6 times 7?")]}, config
+            {"messages": [HumanMessage("What's 6 times 7?")]}, config, context=user
         )
         print(f"-> {last_answer(result)}")
 
@@ -52,7 +61,7 @@ if __name__ == "__main__":
 
         print("\n=== Turn 2 (same thread_id, so it remembers turn 1) ===")
         result = agent.invoke(
-            {"messages": [HumanMessage("Now add 8 to that.")]}, config
+            {"messages": [HumanMessage("Now add 8 to that.")]}, config, context=user
         )
         print(f"-> {last_answer(result)}")
 
@@ -89,8 +98,11 @@ if __name__ == "__main__":
             as_node=START,
         )
         # Resuming with `None` as input replays from the checkpoint in
-        # `fork_config` instead of starting a new run.
-        result = agent.invoke(None, fork_config)
+        # `fork_config` instead of starting a new run. `context` isn't
+        # remembered from the original invoke -- it's per-call, so it has
+        # to be passed again here or `runtime.context` would be `None`
+        # inside the nodes.
+        result = agent.invoke(None, fork_config, context=user)
         print(f"-> {last_answer(result)}")
 
         print("\n=== get_state after the fork: the fork is now the thread's tip ===")
@@ -98,7 +110,26 @@ if __name__ == "__main__":
         print(f"messages so far : {len(snapshot.values['messages'])}")
         print(
             "Turn 2's answer is still on disk -- it's just no longer the "
-            "branch `thread_id=demo-thread` points to by default. Restart "
+            "branch `thread_id=demo-thread-1` points to by default. Restart "
             "this script (same DATABASE_URL) and Turn 1's answer is still "
             "there: that's the whole point of a Postgres-backed checkpointer."
         )
+
+        # --- The store: memory that outlives the thread --------------------
+        #
+        # `demo-thread-2` has never been run before -- get_state_history
+        # below proves it's completely empty. The checkpointer has nothing
+        # to offer this thread. But `user` is the same `Context`, so the
+        # store still has every calculation from `demo-thread-1`, and
+        # `llm_call` reads from the store before it ever looks at this
+        # thread's (nonexistent) history.
+        print("\n=== Same user, brand-new thread: the store remembers anyway ===")
+        new_thread_config = {"configurable": {"thread_id": "demo-thread-2"}}
+        empty_history = list(agent.get_state_history(new_thread_config))
+        print(f"checkpoints for demo-thread-2 before this run: {len(empty_history)}")
+        result = agent.invoke(
+            {"messages": [HumanMessage("What was my most recent calculation?")]},
+            new_thread_config,
+            context=user,
+        )
+        print(f"-> {last_answer(result)}")
