@@ -7,7 +7,7 @@ Hands-on scenarios for learning [LangGraph](https://docs.langchain.com/oss/pytho
 | Folder | Topic |
 |---|---|
 | [01-quickstart](01-quickstart/) | Building a basic tool-calling agent with the Graph API and the Functional API |
-| [02-local-server](02-local-server/) | Serving the same agent over HTTP with Agent Server (`langgraph dev`), LangGraph Studio, and a browser-based chat UI (Agent Chat UI) |
+| [02-local-server](02-local-server/) | Serving the same agent over HTTP with Agent Server (`langgraph dev`), LangGraph Studio, and the hosted Agent Chat UI |
 | [04-checkpointers-postgres](04-checkpointers-postgres/) | Persisting the agent's state to PostgreSQL with `PostgresSaver` / `AsyncPostgresSaver`: threads, checkpoints, state history, and forking history with time travel |
 
 ## Setup

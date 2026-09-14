@@ -7,8 +7,10 @@ This scenario takes the exact same calculator agent from
 [01-quickstart](../01-quickstart/) and serves it over HTTP with **Agent
 Server** — no changes to the agent's graph logic at all. It exists to make
 the relationship between "a LangGraph agent" and "Agent Server" concrete.
-It also adds a browser-based chat UI ([**Agent Chat UI**](agent-chat-ui/))
-on top, so a person — not just `client.py` — can talk to the agent.
+It also shows a third kind of client: the hosted
+[**Agent Chat UI**](https://agentchat.vercel.app), a browser chat window
+that talks to `langgraph dev` directly — no local frontend install needed,
+so a person, not just `client.py`, can talk to the agent.
 
 ## How an agent relates to Agent Server
 
@@ -60,12 +62,6 @@ a UI, a teammate, another service — without rewriting it.
 - **`client.py`** — a minimal client using the `langgraph_sdk`, showing
   that talking to the served agent is now just an HTTP call: this script
   never imports LangGraph or `agent.py` at all.
-- **`agent-chat-ui/`** — a vendored copy of
-  [Agent Chat UI](https://github.com/langchain-ai/agent-chat-ui), a Next.js
-  app that talks to Agent Server the same way `client.py` does (over HTTP,
-  by graph name), but renders a chat window instead of printing to a
-  terminal. See its own [README](agent-chat-ui/README.md) for the full
-  feature set (tool call rendering, time travel, artifacts, …).
 
 ## Setup
 
@@ -117,46 +113,42 @@ UV_PROJECT_ENVIRONMENT="$V" uv run python 02-local-server/client.py
 This streams the same "Add 3 and 4." run as 01-quickstart, but over HTTP
 via `langgraph_sdk` instead of an in-process `.invoke()` call.
 
-### Web UI (Agent Chat UI)
+### Web UI (hosted Agent Chat UI)
 
-With `langgraph dev` still running, start the chat UI in a third terminal:
+[Agent Chat UI](https://docs.langchain.com/oss/python/langgraph/ui) also
+ships as a hosted site at <https://agentchat.vercel.app> — no local
+frontend install needed. Its JavaScript runs in *your* browser and calls
+`langgraph dev` directly over HTTP, so the dev server just needs to be
+reachable from wherever your browser is.
+
+With `langgraph dev --host 0.0.0.0` still running (from the previous
+step), publish its port from the sandbox to your host:
 
 ```bash
-cd 02-local-server/agent-chat-ui
-npm install   # first time only
-npm run dev
+sbx ports <sandbox-name> --publish 2024:2024/tcp
 ```
 
-> **Filesystem quirks.** If this repo is checked out on a filesystem that
-> doesn't support fast/atomic renames or symlinks (the same class of issue
-> noted above for `uv`'s venv — e.g. a Windows-hosted volume bind-mounted
-> into a Linux sandbox without symlink privileges), `npm install` here can
-> hit a few things:
-> - **Very slow installs.** Run `npm install` from a copy of
->   `02-local-server/agent-chat-ui/` on a local disk instead, then run
->   `npm run dev` from there.
-> - **`Error: ENOENT: no such file or directory, uv_cwd`.** Node's cached
->   working-directory handle went stale, usually from a previous
->   `npm install`'s heavy renaming inside `node_modules`. `cd` out and
->   back into the directory (or open a fresh shell) to refresh the
->   handle, then retry.
-> - **`EPERM: operation not permitted, symlink ...` under
->   `node_modules/.bin/`.** Already worked around: this app's
->   [`.npmrc`](agent-chat-ui/.npmrc) sets `bin-links=false` so npm never
->   attempts those symlinks, and its `package.json` scripts invoke each
->   tool with `node node_modules/<pkg>/<bin>` directly instead of relying
->   on them. You shouldn't see this one — if you do, some other tool
->   outside these scripts is still expecting a `.bin` symlink to exist.
+Then open <https://agentchat.vercel.app> in a browser **on that same
+host** and, on its connect screen, enter:
 
-Open <http://localhost:3000>. The app's `.env.example` already ships with
-defaults that match this scenario's `langgraph.json`
-(`NEXT_PUBLIC_API_URL=http://localhost:2024`,
-`NEXT_PUBLIC_ASSISTANT_ID=agent`), so if you copy it to `.env` — or just
-accept the setup form's defaults the first time the page loads — it
-connects straight to the dev server with no other configuration. Type
-"Add 3 and 4." and watch the same graph run as `client.py`, now with the
-tool calls and results rendered as chat messages instead of printed
-`chunk.event` / `chunk.data` pairs.
+- **Deployment URL**: `http://localhost:2024`
+- **Assistant / Graph ID**: `agent` (the key from `langgraph.json`)
+- **LangSmith API key**: leave blank — only needed for a real deployment
+
+`http://localhost:2024` works even though the page itself is served over
+HTTPS — browsers specifically exempt `localhost` from the mixed-content
+blocking that would otherwise stop an HTTPS page from calling an `http://`
+URL. Then chat with it the same way you would `client.py` — type
+"Add 3 and 4." and watch the same graph run, now with the tool calls and
+results rendered as chat messages instead of printed `chunk.event` /
+`chunk.data` pairs.
+
+(`langgraph dev` also has a `--tunnel` flag that exposes it through a
+public Cloudflare tunnel instead of a published port, which is handy if
+your browser isn't on the same host as the sandbox. It depends on the
+sandbox's outbound DNS allowing Cloudflare's tunnel-discovery lookups
+though, which isn't guaranteed in every environment — publishing the
+port is the more reliable default here.)
 
 ## What to notice
 
@@ -170,10 +162,12 @@ tool calls and results rendered as chat messages instead of printed
   from being served, not from anything in `agent.py`.
 - `client.py`, Studio, and Agent Chat UI are three different clients of
   the exact same running server — none of them required a single change
-  to `agent.py`. That's the payoff of "the agent is the logic; Agent
+  to `agent.py`, and Agent Chat UI didn't require installing anything
+  locally either. That's the payoff of "the agent is the logic; Agent
   Server is the delivery mechanism": any client that can speak the Agent
   Server HTTP API (or its `langgraph_sdk` wrapper) can drive the graph,
-  including a full chat UI you didn't have to build yourself.
+  including a full chat UI you didn't have to build — or even host —
+  yourself.
 - `langgraph dev` is explicitly a **development-only** server (in-memory,
   no persistence across restarts). The doc notes that shipping this to
   production means using LangSmith Deployment instead — the local server
